@@ -1,0 +1,67 @@
+version: '3'
+
+networks:
+    hz-market:
+        driver: bridge
+
+services:
+    php:
+        build:
+            context: .
+            dockerfile: ./docker/php/Dockerfile
+        container_name: hz-market_php
+        ports:
+            - "9000:9000"
+        volumes:
+            - ./docker/php/php.ini:/usr/local/etc/php/conf.d/local.ini
+            - ./:/var/www
+        networks:
+            - hz-market
+        depends_on:
+            - proxy
+
+    proxy:
+        image: nginx:1.25
+        container_name: hz-market_nginx
+        working_dir: /var/www
+        ports:
+            - "82:80"
+        volumes:
+            - ./:/var/www
+            - ./docker/nginx/conf.d/:/etc/nginx/conf.d/
+        networks:
+            - hz-market
+
+
+    db:
+        image: mysql:8.0
+        container_name: hz-market_db
+        environment:
+            MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+            MYSQL_DATABASE: ${DB_DATABASE}
+            MYSQL_USER: ${DB_USERNAME}
+            MYSQL_PASSWORD: ${DB_PASSWORD}
+            MYSQL_INITDB_SKIP_TZINFO: 1
+            MYSQL_ALLOW_EMPTY_PASSWORD: 1
+        volumes:
+            - './docker/mysql/:/var/lib/mysql'
+        ports:
+            - "3306:3306"
+        networks:
+            - hz-market
+
+    phpmyadmin:
+        image: phpmyadmin:latest
+        container_name: hz-market_pma
+        environment:
+            PMA_HOST: db
+            PMA_USER: ${DB_USERNAME}
+            PMA_PASSWORD: ${DB_PASSWORD}
+            UPLOAD_LIMIT: 1G
+        restart: always
+        ports:
+            - "8086:80"
+        links:
+            - db
+        networks:
+            - hz-market
